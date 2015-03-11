@@ -6,6 +6,11 @@
 
 package blockcipher;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  *
  * @author Toshiba
@@ -59,7 +64,19 @@ public class BlockCipher {
      * @param key Kunci yang terdiri dari 16 Byte data.
      */
     private void PBox(byte[] input, byte[] key) {
+        assert(input != null && key != null && input.length == 16
+                && key.length == 16);
         
+        for (int i = 0; i < 16; ++i) {
+            // cari indeks yang akan ditukar
+            int idxA = (key[i] >> 4) & 0xF;
+            int idxB = key[i] & 0xF;
+            
+            // lakukan swap dan XOR
+            byte temp = input[idxB];
+            input[idxB] = (byte)(input[idxA] ^ input[idxB]);
+            input[idxA] = temp;
+        }
     }
     
     /**
@@ -68,7 +85,30 @@ public class BlockCipher {
      * @param key 32 Byte kunci.
      */
     private void generateKey(byte[] key) {
+        assert(key != null && key.length == 32);
         
+        // alokasi roundKey
+        roundKey = new byte[4][16];
+        
+        // key 0
+        for (int i = 0; i < 16; ++i) {
+            roundKey[0][i] = key[i];
+        }
+        
+        // key 1
+        for (int i = 0; i < 16; ++i) {
+            roundKey[1][i] = key[i + 16];
+        }
+        
+        // key 2
+        for (int i = 0; i < 16; ++i) {
+            roundKey[2][i] = key[((i + 4) % 16) + 16];
+        }
+        
+        // key 3
+        for (int i = 0; i < 16; ++i) {
+            roundKey[3][i] = key[((i + 7) % 16) + 16];
+        }
     }
     
     /**
@@ -78,7 +118,34 @@ public class BlockCipher {
      * @return Hasil fungsi F, terdiri atas 16 Byte data.
      */
     private byte[] F(byte[] input, byte[] key) {
-        return null;
+        assert(input != null && key != null && input.length == 16
+                && key.length == 16);
+        
+        // aplikasikan xor antara input dengan key
+        byte[] ret = new byte[16];
+        for (int i = 0; i < 16; ++i) {
+            ret[i] = (byte)(input[i] ^ key[i]);
+        }
+        
+        // aplikasikan pbox
+        PBox(ret, key);
+        
+        // aplikasikan MD5 pada key
+        byte[] md5Key = new byte[16];
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md5Key = md.digest(key);
+            assert(md5Key.length == 16);
+        } catch (NoSuchAlgorithmException ex) {
+            Logger.getLogger(BlockCipher.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        // aplikasikan xor terakhir
+        for (int i = 0; i < 16; ++i) {
+            ret[i] = (byte)(ret[i] ^ md5Key[i]);
+        }
+        
+        return ret;
     }
     
     /**
@@ -89,7 +156,28 @@ public class BlockCipher {
      * @return hasil enkripsi 1 ronde.
      */
     private byte[] encryptionRound(byte[] input, byte[] key) {
-        return null;
+        assert(input != null && key != null && input.length == 32
+                && key.length == 16);
+        
+        // Aplikasikan fungsi H
+        byte temp[] = H(input);
+        
+        // kurangkan kedua bagian pada temp
+        byte redc[] = new byte[16];
+        for (int i = 0; i < 16; ++i) {
+            redc[i] = (byte)(temp[i] - temp[i + 16]);
+        }
+        
+        // aplikasikan F pada redc
+        redc = F(redc, key);
+        
+        // tambahkan redc ke temp
+        for (int i = 0; i < 16; ++i) {
+            temp[i] = (byte)(temp[i] + redc[i]);
+            temp[i + 16] = (byte)(temp[i + 16] + redc[i]);
+        }
+        
+        return temp;
     }
 
     /**
@@ -100,7 +188,28 @@ public class BlockCipher {
      * @return hasil dekripsi 1 ronde.
      */
     private byte[] decryptionRound(byte[] input, byte[] key) {
-        return null;
+        assert(input != null && key != null && input.length == 32
+                && key.length == 16);
+        
+        // Aplikasikan fungsi H inverse
+        byte temp[] = HInverse(input);
+        
+        // kurangkan kedua bagian pada temp
+        byte redc[] = new byte[16];
+        for (int i = 0; i < 16; ++i) {
+            redc[i] = (byte)(temp[i] - temp[i + 16]);
+        }
+        
+        // aplikasikan F pada redc
+        redc = F(redc, key);
+        
+        // tambahkan redc ke temp
+        for (int i = 0; i < 16; ++i) {
+            temp[i] = (byte)(temp[i] + redc[i]);
+            temp[i + 16] = (byte)(temp[i + 16] + redc[i]);
+        }
+        
+        return temp;
     }
     
     /**
