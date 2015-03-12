@@ -24,7 +24,52 @@ public class BlockCipher {
      * @return cipherteks hasil enkripsi
      */
     public byte[] encrypt(byte[] data, byte[] key) {
-        return null;
+        generateKey(key);
+        
+        byte[][] splitted = new byte[data.length/32 + 1][];
+        
+        //Split
+        int i, j, k;
+        k = 0 ;
+        for (i=0; i<splitted.length; i++)
+        {
+            splitted[i] = new byte[32];
+            
+            for (j=0; j<32; j++)
+            {
+                if (k < data.length)
+                {
+                    splitted[i][j] = data[k];
+                } else {
+                    splitted[i][j] = 0;
+                }
+                k++;
+            }
+        }
+        
+        for (i=0; i<splitted.length; i++)
+        {
+            splitted[i] = encryptionRound(splitted[i], key);
+        }
+        
+        for (i=0; i<splitted.length; i++)
+        {
+            splitted[i] = H(splitted[i]);
+        }
+       
+        //Gabungin
+        byte[] out = new byte[splitted.length * 32];
+        k = 0 ;
+        for (i=0; i<splitted.length; i++)
+        {
+            for (j=0; j<32; j++)
+            {
+                out[k] = splitted[i][j];
+                k++;
+            }
+        }
+        
+        return out;
     }
     
     /**
@@ -32,7 +77,52 @@ public class BlockCipher {
      * @return plainteks hasil dekripsi
      */
     public byte[] decrypt(byte[] data, byte[] key) {
-        return null;
+        generateKey(key);
+        
+        byte[][] splitted = new byte[data.length/32 + 1][];
+        
+        //Split
+        int i, j, k;
+        k = 0 ;
+        for (i=0; i<splitted.length; i++)
+        {
+            splitted[i] = new byte[32];
+            
+            for (j=0; j<32; j++)
+            {
+                if (k < data.length)
+                {
+                    splitted[i][j] = data[k];
+                } else {
+                    splitted[i][j] = 0;
+                }
+                k++;
+            }
+        }
+        
+        for (i=0; i<splitted.length; i++)
+        {
+            splitted[i] = HInverse(splitted[i]);
+        }
+        
+        for (i=0; i<splitted.length; i++)
+        {
+            splitted[i] = decryptionRound(splitted[i], key);
+        }
+       
+        //Gabungin
+        byte[] out = new byte[splitted.length * 32];
+        k = 0 ;
+        for (i=0; i<splitted.length; i++)
+        {
+            for (j=0; j<32; j++)
+            {
+                out[k] = splitted[i][j];
+                k++;
+            }
+        }
+        
+        return out;
     }
     
     /**
@@ -43,7 +133,61 @@ public class BlockCipher {
      * atas.
      */
     private byte[] H(byte[] input) {
-        return null;
+        assert(input != null && input.length == 32);
+        // bagi dua
+        byte[] r = new byte[16];
+        byte[] l = new byte[16];
+        
+        int i;
+        for (i=0; i<16; i++)
+        {
+            l[i] = input[i];
+        }
+        for (i=0; i<16; i++)
+        {
+            r[i] = input[i + 16];
+        }
+        
+        //Jumlahin
+        for (i=0; i<16; i++)
+        {
+            l[i] = (byte) (l[i] + r[i]);
+        }
+        
+        //Shift Left
+        byte[] temp = new byte[16];
+        for (i=0; i<16; i++)
+        {
+            temp[i] = l[(i + 4) % 16];
+        }
+        l = temp;
+        
+        //Shift Left
+        temp = new byte[16];
+        for (i=0; i<16; i++)
+        {
+            temp[i] = r[(i + 4) % 16];
+        }
+        r = temp;
+        
+        // Jumlahin
+        for (i=0; i<16; i++)
+        {
+            r[i] = (byte) (r[i] + l[i]);
+        }
+        
+        //Gabungin
+        byte[] out = new byte[32];
+        for(i=0;i<16;i++)
+        {
+            out[i] = l[i];
+        }
+        for(i=0; i<16; i++)
+        {
+            out[i+16] = l[i];
+        }
+        
+        return out;
     }
     
     /**
@@ -54,7 +198,61 @@ public class BlockCipher {
      * atas.
      */
     private byte[] HInverse(byte[] input) {
-        return null;
+        assert(input != null && input.length == 32);
+        // bagi dua
+        byte[] r = new byte[16];
+        byte[] l = new byte[16];
+        
+        int i;
+        for (i=0; i<16; i++)
+        {
+            l[i] = input[i];
+        }
+        for (i=0; i<16; i++)
+        {
+            r[i] = input[i + 16];
+        }
+        
+        //Jumlahin
+        for (i=0; i<16; i++)
+        {
+            l[i] = (byte) (l[i] - r[i]);
+        }
+        
+        //Shift Left
+        byte[] temp = new byte[16];
+        for (i=0; i<16; i++)
+        {
+            temp[i] = l[Math.abs(i - 4) % 16];
+        }
+        l = temp;
+        
+        //Shift Left
+        temp = new byte[16];
+        for (i=0; i<16; i++)
+        {
+            temp[i] = r[Math.abs(i - 4) % 16];
+        }
+        r = temp;
+        
+        // Jumlahin
+        for (i=0; i<16; i++)
+        {
+            r[i] = (byte) (r[i] - l[i]);
+        }
+        
+        //Gabungin
+        byte[] out = new byte[32];
+        for(i=0;i<16;i++)
+        {
+            out[i] = l[i];
+        }
+        for(i=0; i<16; i++)
+        {
+            out[i+16] = l[i];
+        }
+        
+        return out;
     }
     
     /**
@@ -191,23 +389,24 @@ public class BlockCipher {
         assert(input != null && key != null && input.length == 32
                 && key.length == 16);
         
-        // Aplikasikan fungsi H inverse
-        byte temp[] = HInverse(input);
-        
         // kurangkan kedua bagian pada temp
         byte redc[] = new byte[16];
         for (int i = 0; i < 16; ++i) {
-            redc[i] = (byte)(temp[i] - temp[i + 16]);
+            redc[i] = (byte)(input[i] - input[i + 16]);
         }
         
         // aplikasikan F pada redc
         redc = F(redc, key);
         
         // tambahkan redc ke temp
+        byte temp[] = new byte[32];
         for (int i = 0; i < 16; ++i) {
-            temp[i] = (byte)(temp[i] + redc[i]);
-            temp[i + 16] = (byte)(temp[i + 16] + redc[i]);
+            temp[i] = (byte)(input[i] + redc[i]);
+            temp[i + 16] = (byte)(input[i + 16] + redc[i]);
         }
+        
+        // Aplikasikan fungsi H inverse
+        temp = HInverse(temp);
         
         return temp;
     }
